@@ -1,86 +1,90 @@
-#define  _POSIX_C_SOURCE 200809L
-#include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
 #include "monty.h"
+#define _GNU_SOURCE
 
-void file_error(char *argv);
-void error_usage(void);
-int status = 0;
+ssize_t getline(char **lineptr, size_t *n, FILE *stream) {
+    size_t bufsize = 0;
+    int c;
+    size_t i = 0;
 
+    if (lineptr == NULL || n == NULL || stream == NULL) {
+        return -1;
+    }
+
+    if (*lineptr == NULL || *n == 0) {
+        *n = 128;
+        *lineptr = malloc(*n);
+        if (*lineptr == NULL) {
+            return -1;
+        }
+    }
+
+    while ((c = fgetc(stream)) != EOF) {
+        if (i >= bufsize - 1) {
+            bufsize += 128;
+            char *temp = realloc(*lineptr, bufsize);
+            if (temp == NULL) {
+                return -1;
+            }
+            *lineptr = temp;
+            *n = bufsize;
+        }
+        (*lineptr)[i++] = c;
+        if (c == '\n') {
+            break;
+        }
+    }
+
+    if (i == 0) {
+        return -1;
+    }
+
+    (*lineptr)[i] = '\0';
+    return i;
+}
+
+
+buss_t buss = {NULL, NULL, NULL, 0};
 /**
- * main - entry point
- * @argv: list of arguments passed to our program
- * @argc: amount of args
- *
- * Return: nothing
- */
-int main(int argc, char **argv)
+* main - monty code interpreter
+* @argc: number of arguments
+* @argv: monty file location
+* Return: 0 on success
+*/
+int main(int argc, char *argv[])
 {
+	char *content;
 	FILE *file;
-	size_t buf_len = 0;
-	char *buffer = NULL;
-	char *str = NULL;
+	size_t size = 0;
+	ssize_t read_line = 1;
 	stack_t *stack = NULL;
-	unsigned int line_cont = 1;
+	unsigned int counter = 0;
 
-	global.data_struct = 1;
 	if (argc != 2)
-		error_usage();
-
-	file = fopen(argv[1], "r");
-
-	if (!file)
-		file_error(argv[1]);
-
-	while ((getline(&buffer, &buf_len, file)) != (-1))
 	{
-		if (status)
-			break;
-		if (*buffer == '\n')
-		{
-			line_cont++;
-			continue;
-		}
-		str = strtok(buffer, " \t\n");
-		if (!str || *str == '#')
-		{
-			line_cont++;
-			continue;
-		}
-		global.argument = strtok(NULL, " \t\n");
-		opcode(&stack, str, line_cont);
-		line_cont++;
+		fprintf(stderr, "USAGE: monty file\n");
+		exit(EXIT_FAILURE);
 	}
-	free(buffer);
+	file = fopen(argv[1], "r");
+	buss.file = file;
+	if (!file)
+	{
+		fprintf(stderr, "Error: Can't open file %s\n", argv[1]);
+		exit(EXIT_FAILURE);
+	}
+	while (read_line > 0)
+	{
+		content = NULL;
+		read_line = getline(&content, &size, file);
+		buss.content = content;
+		counter++;
+		if (read_line > 0)
+		{
+			execute(content, &stack, counter, file);
+		}
+		free(content);
+	}
 	free_stack(stack);
 	fclose(file);
-	exit(EXIT_SUCCESS);
-}
-
-/**
- * file_error - prints file error message and exits
- * @argv: argv given by main()
- *
- * Desc: print msg if  not possible to open the file
- * Return: nothing
- */
-void file_error(char *argv)
-{
-	fprintf(stderr, "Error: Can't open file %s\n", argv);
-	exit(EXIT_FAILURE);
-}
-
-/**
- * error_usage - prints usage message and exits
- *
- * Desc: if user does not give any file or more than
- * one argument to your program
- *
- * Return: nothing
- */
-void error_usage(void)
-{
-	fprintf(stderr, "USAGE: monty file\n");
-	exit(EXIT_FAILURE);
+return (0);
 }
