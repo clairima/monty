@@ -3,7 +3,6 @@
  * push - add node to the stack
  * @head: stack head
  * @counter: line_number
- * @buss: buss structure containing the argument
  * Return: no return
 */
 void push(stack_t **head, unsigned int counter)
